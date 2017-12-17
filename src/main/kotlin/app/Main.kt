@@ -19,9 +19,15 @@ fun main(args: Array<String>) {
         enableDynamicGzip()
     }
 
+    val unrestricted = if (Heroku.getUnrestrictedAccess() == null) {
+        false
+    } else {
+        Heroku.getUnrestrictedAccess().toBoolean()
+    }
+
     app.get("/api/user/:user") { ctx ->
         val user = ctx.param("user")!!
-        when (UserCtrl.hasStarredRepo(user)) {
+        when (unrestricted || UserCtrl.hasStarredRepo(user)) {
             true -> ctx.json(UserCtrl.getUserProfile(ctx.param("user")!!))
             false -> ctx.status(400)
         }
@@ -29,7 +35,7 @@ fun main(args: Array<String>) {
 
     app.get("/user/:user") { ctx ->
         val user = ctx.param("user")!!
-        when (UserCtrl.hasStarredRepo(user)) {
+        when (unrestricted || UserCtrl.hasStarredRepo(user)) {
             true -> ctx.renderVelocity("user.vm", model("user", user))
             false -> ctx.redirect("/search?q=$user")
         }
@@ -37,7 +43,7 @@ fun main(args: Array<String>) {
 
     app.get("/search") { ctx ->
         val user = ctx.queryParam("q") ?: ""
-        when (UserCtrl.hasStarredRepo(user)) {
+        when (unrestricted || UserCtrl.hasStarredRepo(user)) {
             true -> ctx.redirect("/user/$user")
             false -> ctx.renderVelocity("search.vm", model("q", escapeHtml(user)))
         }
